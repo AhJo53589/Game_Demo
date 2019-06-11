@@ -1,0 +1,40 @@
+
+uniform sampler2D rttMap; 
+uniform sampler2D waveMap;
+
+uniform float3 cameraPosition; 
+uniform float timeForWave; 
+
+struct PS_INPUT
+{
+	float4 iProjCoord : TEXCOORD0;
+	float2 iTextureCoord : TEXCOORD1;
+	float3 iWorldCoord : TEXCOORD2;
+};
+
+struct PS_OUTPUT
+{
+	float4 oFinalColor : COLOR;
+};
+
+PS_OUTPUT Main(PS_INPUT input)
+{
+	PS_OUTPUT output = (PS_OUTPUT)0;
+                float4 BLUE = {0.1, 0.1, 0.15, 1.0};
+              
+	float2 wavexy;
+	wavexy.x = input.iTextureCoord.x + timeForWave * 0.0003;
+	wavexy.y = input.iTextureCoord.y + timeForWave * 0.0001;
+	float4 wave = tex2D(waveMap, wavexy);
+	wave = (wave-0.5)/2; 
+	float dis = distance(input.iWorldCoord.xyz, cameraPosition); 
+    float factor = clamp(dis/300, 0.0f, 1.0f); 
+
+	float4 projCoord0 =  input.iProjCoord / (input.iProjCoord.z + 1); 
+	projCoord0 += wave*0.2*(1 - factor); 
+	projCoord0 = (projCoord0 + 1.0)*0.5; 
+	projCoord0 = clamp(projCoord0, 0.001, 0.999);
+	output.oFinalColor =   ( tex2D(rttMap, projCoord0.xy) * 0.3 +  BLUE * 0.6 );
+
+	return output;
+}

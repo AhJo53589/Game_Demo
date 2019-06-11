@@ -1,0 +1,28 @@
+
+uniform float4x4 ViewProjMatrix;
+uniform float4x4 WorldMatrix;
+
+struct VS_INPUT
+{
+	float4 iPosition : POSITION;
+	float2 iTextureCoord : TEXCOORD0;
+};
+
+struct VS_OUTPUT
+{
+	float4 oPosition : POSITION;
+	float3 oTextureCoord : TEXCOORD0;
+	float2 oTextureWaveCoord : TEXCOORD1;
+	float4 oPositionWorld : TEXCOORD2;
+};
+
+VS_OUTPUT Main(VS_INPUT input)
+{
+	VS_OUTPUT output = (VS_OUTPUT)0;
+
+	output.oPositionWorld = mul(input.iPosition, WorldMatrix);
+	output.oPosition = mul(output.oPositionWorld, ViewProjMatrix);
+	output.oTextureCoord = output.oPosition.xyz;
+	output.oTextureWaveCoord = input.iTextureCoord;
+	return output;
+}
