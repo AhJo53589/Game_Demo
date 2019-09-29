@@ -26,7 +26,6 @@ public class MainMenu : MonoBehaviour
             {
                 //string str = btn.transform.Find("Text").GetComponent<Text>().text.ToString();
                 string str = btn.GetComponentInChildren<Text>().text.ToString();
-                //string str = "Level 01";
                 JumpScene(str);
             });
         }
@@ -63,17 +62,29 @@ public class MainMenu : MonoBehaviour
     {
         while (true)
         {
-            if (m_Slider_Anim.value < 10)
+            if (m_Slider_Anim.value < 1)
             {
                 m_Slider_Anim.value += Time.deltaTime;
             }
             else
             {
                 Debug.Log("SliderRun");
-                m_Button_Level[0].gameObject.SetActive(true);
+                StartCoroutine(ButtonsShow());
                 yield break;
             }
             yield return 0;
+        }
+    }
+
+    IEnumerator ButtonsShow()
+    {
+        while (true)
+        {
+            foreach (Button btn in m_Button_Level)
+            {
+                btn.gameObject.SetActive(true);
+                yield return new WaitForSeconds(0.3f);
+            }
         }
     }
 }
