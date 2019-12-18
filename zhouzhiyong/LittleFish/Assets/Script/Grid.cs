@@ -17,7 +17,7 @@ public class Grid : MonoBehaviour
     {
         public PieceType type;
         public GameObject prefab;
-    }
+    };
 
     public int xDim;
     public int yDim;
@@ -96,10 +96,19 @@ public class Grid : MonoBehaviour
 
     public IEnumerator Fill()
     {
-        while (FillStep())
+        bool needsRefill = true;
+
+        while (needsRefill)
         {
-            inverse = !inverse;
             yield return new WaitForSeconds(fillTime);
+
+            while (FillStep())
+            {
+                inverse = !inverse;
+                yield return new WaitForSeconds(fillTime);
+            }
+
+            needsRefill = ClearAllValidMatches();
         }
     }
 
@@ -237,11 +246,24 @@ public class Grid : MonoBehaviour
             pieces[piece1.X, piece1.Y] = piece2;
             pieces[piece2.X, piece2.Y] = piece1;
 
-            int piece1X = piece1.X;
-            int piece1Y = piece1.Y;
+            if (GetMatch(piece1, piece2.X, piece2.Y) != null || GetMatch(piece2, piece1.X, piece1.Y) != null)
+            {
 
-            piece1.MovableComponent.Move(piece2.X, piece2.Y, fillTime);
-            piece2.MovableComponent.Move(piece1X, piece1Y, fillTime);
+                int piece1X = piece1.X;
+                int piece1Y = piece1.Y;
+
+                piece1.MovableComponent.Move(piece2.X, piece2.Y, fillTime);
+                piece2.MovableComponent.Move(piece1X, piece1Y, fillTime);
+
+                ClearAllValidMatches();
+
+                StartCoroutine(Fill());
+            }
+            else
+            {
+                pieces[piece1.X, piece1.Y] = piece1;
+                pieces[piece2.X, piece2.Y] = piece1;
+            }
         }
     }
 
@@ -261,5 +283,86 @@ public class Grid : MonoBehaviour
         {
             SwapPieces(pressedPiece, enteredPiece);
         }
+    }
+
+    public List<GamePiece> GetMatch(GamePiece piece, int newX, int newY)
+    {
+        if (!piece.IsColored()) return null;
+
+        ColorPiece.ColorType color = piece.ColorComponent.Color;
+        List<GamePiece>[] colPieces = new List<GamePiece>[2];
+        colPieces[0] = new List<GamePiece>();
+        colPieces[1] = new List<GamePiece>();
+        List<GamePiece> matchingPieces = new List<GamePiece>();
+
+        int[] dx = new int[] { 1, -1, 0, 0 };
+        int[] dy = new int[] { 0, 0, 1, -1 };
+
+        for (int i = 0; i < 4; i++)
+        {
+            int ii = i / 2;
+            int tx = newX;
+            int ty = newY;
+            while (true)
+            {
+                tx += dx[i];
+                ty += dy[i];
+                if (tx < 0 || tx >= xDim) break;
+                if (ty < 0 || ty >= yDim) break;
+                if (!pieces[tx, ty].IsColored() || pieces[tx, ty].ColorComponent.Color != color) break;
+                colPieces[ii].Add(pieces[tx, ty]);
+            }
+        }
+
+        foreach (var c in colPieces)
+        {
+            if (c.Count >= 2)
+            {
+                matchingPieces.AddRange(c);
+            }
+        }
+
+        matchingPieces.Add(piece);
+        if (matchingPieces.Count < 3) return null;
+        return matchingPieces;
+    }
+
+    public bool ClearAllValidMatches()
+    {
+        bool needsRefill = false;
+
+        for (int y = 0; y < yDim; y++)
+        {
+            for (int x = 0; x < xDim; x++)
+            {
+                if (!pieces[x, y].IsClearable()) continue;
+
+                List<GamePiece> match = GetMatch(pieces[x, y], x, y);
+                if (match == null) continue;
+
+                for (int i = 0; i < match.Count; i++)
+                {
+                    if (ClearPiece(match[i].X, match[i].Y))
+                    {
+                        needsRefill = true;
+                    }
+                }
+            }
+        }
+
+        return needsRefill;
+    }
+
+    public bool ClearPiece(int x, int y)
+    {
+        if (pieces[x, y].IsClearable() && !pieces[x, y].ClearableComponent.IsBeingCleared)
+        {
+            pieces[x, y].ClearableComponent.Clear();
+            SpawnNewPiece(x, y, PieceType.EMPTY);
+
+            return true;
+        }
+
+        return false;
     }
 }
