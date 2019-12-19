@@ -220,6 +220,7 @@ MonoBehaviour:
   xDim: 9
   yDim: 9
   fillTime: 0.15
+  clearTime: 0.5
   piecePrefabs:
   - type: 0
     prefab: {fileID: 1730101226196146, guid: 21f507593d7f5244fa4ea1f07a908bf4, type: 2}

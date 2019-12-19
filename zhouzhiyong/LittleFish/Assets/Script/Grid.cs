@@ -22,6 +22,7 @@ public class Grid : MonoBehaviour
     public int xDim;
     public int yDim;
     public float fillTime;
+    public float clearTime;
 
     public PiecePrefab[] piecePrefabs;
     public GameObject backgroundPrefab;
@@ -100,7 +101,7 @@ public class Grid : MonoBehaviour
 
         while (needsRefill)
         {
-            yield return new WaitForSeconds(fillTime);
+            yield return new WaitForSeconds(clearTime);
 
             while (FillStep())
             {
@@ -116,104 +117,71 @@ public class Grid : MonoBehaviour
     {
         bool movedPiece = false;
 
-        for (int y = yDim - 2; y >= 0; y--)
+        for (int y = yDim - 1; y >= 0; y--)
         {
             for (int loopX = 0; loopX < xDim; loopX++)
             {
-                int x = loopX;
-
-                if (inverse)
-                {
-                    x = xDim - 1 - loopX;
-                }
-
+                int x = (inverse) ? xDim - loopX - 1 : loopX;
                 GamePiece piece = pieces[x, y];
+                if (piece.Type != PieceType.EMPTY) continue;
 
-                if (piece.IsMovable())
+                if (y == 0)
                 {
-                    GamePiece pieceBelow = pieces[x, y + 1];
+                    Destroy(piece.gameObject);
+                    GenerateNewPieceOnFirstLine(x);
+                    movedPiece = true;
+                    continue;
+                }
 
-                    if (pieceBelow.Type == PieceType.EMPTY)
+                bool hasMovableAbove = true;
+                for (int tempY = y - 1; tempY >= 0; tempY--)
+                {
+                    GamePiece pieceTemp = pieces[x, tempY];
+                    if (pieceTemp.IsMovable()) break;
+                    if (!pieceTemp.IsMovable() && pieceTemp.Type != PieceType.EMPTY)
                     {
-                        Destroy(pieceBelow.gameObject);
-                        piece.MovableComponent.Move(x, y + 1, fillTime);
-                        pieces[x, y + 1] = piece;
-                        SpawnNewPiece(x, y, PieceType.EMPTY);
-                        movedPiece = true;
+                        hasMovableAbove = false;
+                        break;
                     }
-                    else
-                    {
-                        for (int diag = -1; diag <= 1; diag++)
-                        {
-                            if (diag != 0)
-                            {
-                                int diagX = x + diag;
+                }
 
-                                if (inverse)
-                                {
-                                    diagX = x - diag;
-                                }
+                int[] diagX1 = new int[] { 0, 1, -1 };
+                int[] diagX2 = new int[] { 0, -1, 1 };
+                int[] diagX = (inverse) ? diagX1 : diagX2;
+                for (int i = 0; i < 3; i++)
+                {
+                    int tx = x + diagX[i];
+                    int ty = y - 1;
+                    if (tx < 0 || tx >= xDim) continue;
+                    if (ty < 0 || ty >= yDim) continue;
 
-                                if (diagX >= 0 && diagX < xDim)
-                                {
-                                    GamePiece diagonalPiece = pieces[diagX, y + 1];
+                    GamePiece pieceAbove = pieces[tx, ty];
+                    if (!pieceAbove.IsMovable()) continue;
+                    if (pieceAbove.Type == PieceType.EMPTY) continue;
+                    if (i != 0 && pieces[tx, y].Type == PieceType.EMPTY) continue;
+                    if (i != 0 && hasMovableAbove) continue;
 
-                                    if (diagonalPiece.Type == PieceType.EMPTY)
-                                    {
-                                        bool hasPieceAbove = true;
-
-                                        for (int aboveY = y; aboveY >= 0; aboveY--)
-                                        {
-                                            GamePiece pieceAbove = pieces[diagX, aboveY];
-
-                                            if (pieceAbove.IsMovable())
-                                            {
-                                                break;
-                                            }
-                                            else if (!pieceAbove.IsMovable() && pieceAbove.Type != PieceType.EMPTY)
-                                            {
-                                                hasPieceAbove = false;
-                                                break;
-                                            }
-                                        }
-
-                                        if (!hasPieceAbove)
-                                        {
-                                            Destroy(diagonalPiece.gameObject);
-                                            piece.MovableComponent.Move(diagX, y + 1, fillTime);
-                                            pieces[diagX, y + 1] = piece;
-                                            SpawnNewPiece(x, y, PieceType.EMPTY);
-                                            movedPiece = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Destroy(piece.gameObject);
+                    pieceAbove.MovableComponent.Move(x, y, fillTime);
+                    pieces[x, y] = pieceAbove;
+                    SpawnNewPiece(tx, ty, PieceType.EMPTY);
+                    movedPiece = true;
+                    break;
                 }
             }
         }
-
-        for (int x = 0; x < xDim; x++)
-        {
-            GamePiece pieceBelow = pieces[x, 0];
-
-            if (pieceBelow.Type == PieceType.EMPTY)
-            {
-                Destroy(pieceBelow.gameObject);
-                GameObject newPiece = (GameObject)Instantiate(piecePrefabDict[PieceType.NORMAL], GetWorldPosition(x, -1), Quaternion.identity);
-                newPiece.transform.parent = transform;
-
-                pieces[x, 0] = newPiece.GetComponent<GamePiece>();
-                pieces[x, 0].Init(x, -1, this, PieceType.NORMAL);
-                pieces[x, 0].MovableComponent.Move(x, 0, fillTime);
-                pieces[x, 0].ColorComponent.SetColor((ColorPiece.ColorType)Random.Range(0, pieces[x, 0].ColorComponent.NumColors));
-                movedPiece = true;
-            }
-        }
-
         return movedPiece;
+    }
+
+    private void GenerateNewPieceOnFirstLine(int x)
+    {
+        GameObject newPiece = (GameObject)Instantiate(piecePrefabDict[PieceType.NORMAL], GetWorldPosition(x, -1), Quaternion.identity);
+        newPiece.transform.parent = transform;
+
+        pieces[x, 0] = newPiece.GetComponent<GamePiece>();
+        pieces[x, 0].Init(x, -1, this, PieceType.NORMAL);
+        pieces[x, 0].MovableComponent.Move(x, 0, fillTime);
+        pieces[x, 0].ColorComponent.SetColor((ColorPiece.ColorType)Random.Range(0, pieces[x, 0].ColorComponent.NumColors));
     }
 
     public Vector2 GetWorldPosition(int x, int y)
@@ -248,7 +216,6 @@ public class Grid : MonoBehaviour
 
             if (GetMatch(piece1, piece2.X, piece2.Y) != null || GetMatch(piece2, piece1.X, piece1.Y) != null)
             {
-
                 int piece1X = piece1.X;
                 int piece1Y = piece1.Y;
 
@@ -285,22 +252,16 @@ public class Grid : MonoBehaviour
         }
     }
 
-    public List<GamePiece> GetMatch(GamePiece piece, int newX, int newY)
+    private List<GamePiece> GetMatchOthersInLine(GamePiece piece, int newX, int newY, int dir)
     {
-        if (!piece.IsColored()) return null;
-
         ColorPiece.ColorType color = piece.ColorComponent.Color;
-        List<GamePiece>[] colPieces = new List<GamePiece>[2];
-        colPieces[0] = new List<GamePiece>();
-        colPieces[1] = new List<GamePiece>();
-        List<GamePiece> matchingPieces = new List<GamePiece>();
+        List<GamePiece> colPieces = new List<GamePiece>();
 
         int[] dx = new int[] { 1, -1, 0, 0 };
         int[] dy = new int[] { 0, 0, 1, -1 };
 
-        for (int i = 0; i < 4; i++)
+        for (int i = dir * 2; i < 4 - (1 - dir) * 2; i++)
         {
-            int ii = i / 2;
             int tx = newX;
             int ty = newY;
             while (true)
@@ -309,16 +270,35 @@ public class Grid : MonoBehaviour
                 ty += dy[i];
                 if (tx < 0 || tx >= xDim) break;
                 if (ty < 0 || ty >= yDim) break;
+                if (tx == piece.X && ty == piece.Y) break;
                 if (!pieces[tx, ty].IsColored() || pieces[tx, ty].ColorComponent.Color != color) break;
-                colPieces[ii].Add(pieces[tx, ty]);
+                colPieces.Add(pieces[tx, ty]);
             }
         }
 
-        foreach (var c in colPieces)
+        return colPieces;
+    }
+
+    public List<GamePiece> GetMatch(GamePiece piece, int newX, int newY)
+    {
+        if (!piece.IsColored()) return null;
+
+        List<GamePiece> matchingPieces = new List<GamePiece>();
+
+        List<GamePiece>[] colPieces = new List<GamePiece>[2];
+        for (int i = 0; i < colPieces.Length; i++)
         {
-            if (c.Count >= 2)
+            colPieces[i] = GetMatchOthersInLine(piece, newX, newY, i);
+            if (colPieces[i].Count < 2) continue;
+
+            matchingPieces.AddRange(colPieces[i]);
+
+            foreach (var p in colPieces[i])
             {
-                matchingPieces.AddRange(c);
+                List<GamePiece> temp = GetMatchOthersInLine(p, p.X, p.Y, 1 - i);
+                if (temp.Count < 2) continue;
+                matchingPieces.AddRange(temp);
+                temp.Clear();
             }
         }
 
@@ -360,9 +340,29 @@ public class Grid : MonoBehaviour
             pieces[x, y].ClearableComponent.Clear();
             SpawnNewPiece(x, y, PieceType.EMPTY);
 
+            ClearObstacles(x, y);
+
             return true;
         }
 
         return false;
+    }
+
+    public void ClearObstacles(int x, int y)
+    {
+        int[] dx = new int[] { 1, -1, 0, 0 };
+        int[] dy = new int[] { 0, 0, 1, -1 };
+
+        for (int i = 0; i < 4; i++)
+        {
+            int tx = x + dx[i];
+            int ty = y + dy[i];
+            if (tx < 0 || tx >= xDim) continue;
+            if (ty < 0 || ty >= yDim) continue;
+            if (pieces[tx, ty].Type != PieceType.BUBBLE) continue;
+            if (!pieces[tx, ty].IsClearable()) continue;
+            pieces[tx, ty].ClearableComponent.Clear();
+            SpawnNewPiece(tx, ty, PieceType.EMPTY);
+        }
     }
 }
