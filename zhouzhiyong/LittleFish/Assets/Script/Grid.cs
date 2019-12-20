@@ -9,6 +9,8 @@ public class Grid : MonoBehaviour
         EMPTY,
         NORMAL,
         BUBBLE,
+        ROW_CLEAR,
+        COLUMN_CLEAR,
         COUNT,
     };
 
@@ -224,6 +226,18 @@ public class Grid : MonoBehaviour
 
                 ClearAllValidMatches();
 
+                if (piece1.Type == PieceType.ROW_CLEAR || piece1.Type == PieceType.COLUMN_CLEAR)
+                {
+                    ClearPiece(piece1.X, piece1.Y);
+                }
+                if (piece2.Type == PieceType.ROW_CLEAR || piece2.Type == PieceType.COLUMN_CLEAR)
+                {
+                    ClearPiece(piece2.X, piece2.Y);
+                }
+
+                pressedPiece = null;
+                enteredPiece = null;
+
                 StartCoroutine(Fill());
             }
             else
@@ -320,11 +334,50 @@ public class Grid : MonoBehaviour
                 List<GamePiece> match = GetMatch(pieces[x, y], x, y);
                 if (match == null) continue;
 
+                PieceType specialPieceType = PieceType.COUNT;
+                GamePiece randomPiece = match[Random.Range(0, match.Count)];
+                int specialPieceX = randomPiece.X;
+                int specialPieceY = randomPiece.Y;
+
+                if (match.Count == 4)
+                {
+                    if (pressedPiece == null || enteredPiece == null)
+                    {
+                        specialPieceType = (PieceType)Random.Range((int)PieceType.ROW_CLEAR, (int)PieceType.COLUMN_CLEAR);
+                    }
+                    else if (pressedPiece.Y == enteredPiece.Y)
+                    {
+                        specialPieceType = PieceType.ROW_CLEAR;
+                    }
+                    else
+                    {
+                        specialPieceType = PieceType.COLUMN_CLEAR;
+                    }
+                }
+
                 for (int i = 0; i < match.Count; i++)
                 {
                     if (ClearPiece(match[i].X, match[i].Y))
                     {
                         needsRefill = true;
+
+                        if (match[i] == pressedPiece || match[i] == enteredPiece)
+                        {
+                            specialPieceX = match[i].X;
+                            specialPieceY = match[i].Y;
+                        }
+                    }
+                }
+
+                if (specialPieceType != PieceType.COUNT)
+                {
+                    Destroy(pieces[specialPieceX, specialPieceY]);
+                    GamePiece newPiece = SpawnNewPiece(specialPieceX, specialPieceY, specialPieceType);
+
+                    if ((specialPieceType == PieceType.ROW_CLEAR || specialPieceType == PieceType.COLUMN_CLEAR)
+                        && newPiece.IsColored() && match[0].IsColored())
+                    {
+                        newPiece.ColorComponent.SetColor(match[0].ColorComponent.Color);
                     }
                 }
             }
@@ -365,4 +418,21 @@ public class Grid : MonoBehaviour
             SpawnNewPiece(tx, ty, PieceType.EMPTY);
         }
     }
+
+    public void ClearRow(int row)
+    {
+        for (int x = 0; x < xDim; x++)
+        {
+            ClearPiece(x, row);
+        }
+    }
+
+    public void ClearColumn(int column)
+    {
+        for (int y = 0; y < yDim; y++)
+        {
+            ClearPiece(column, y);
+        }
+    }
+
 }
