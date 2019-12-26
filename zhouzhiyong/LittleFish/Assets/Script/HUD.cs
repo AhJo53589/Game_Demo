@@ -83,6 +83,10 @@ public class HUD : MonoBehaviour
 	public void OnGameWin(int score)
 	{
 		gameOver.ShowWin(score, starIdx);
+		if (starIdx >= PlayerPrefs.GetInt(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, 0))
+		{
+			PlayerPrefs.SetInt(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, starIdx);
+		}
 	}
 
 	public void OnGameLose()
