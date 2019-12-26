@@ -51,6 +51,13 @@ public class Grid : MonoBehaviour
 
     private bool gameOver = false;
 
+    private bool isFilling = false;
+
+    public bool IsFilling
+    {
+        get { return isFilling; }
+    }
+
     // Use this for initialization
     void Awake ()
     {
@@ -107,6 +114,7 @@ public class Grid : MonoBehaviour
 
     public IEnumerator Fill()
     {
+        isFilling = true;
         bool needsRefill = true;
 
         while (needsRefill)
@@ -121,6 +129,8 @@ public class Grid : MonoBehaviour
 
             needsRefill = ClearAllValidMatches();
         }
+
+        isFilling = false;
     }
 
     public bool FillStep()

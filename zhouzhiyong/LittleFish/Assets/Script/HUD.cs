@@ -5,6 +5,7 @@ using UnityEngine;
 public class HUD : MonoBehaviour
 {
 	public Level level;
+	public GameOver gameOver;
 
 	public UnityEngine.UI.Text remainingText;
 	public UnityEngine.UI.Text remainingSubtext;
@@ -14,7 +15,6 @@ public class HUD : MonoBehaviour
 	public UnityEngine.UI.Image[] stars;
 
 	private int starIdx = 0;
-	private bool isGameOver = false;
 
 	// Use this for initialization
 	void Start () 
@@ -82,11 +82,11 @@ public class HUD : MonoBehaviour
 
 	public void OnGameWin(int score)
 	{
-		isGameOver = true;
+		gameOver.ShowWin(score, starIdx);
 	}
 
 	public void OnGameLose()
 	{
-		isGameOver = true;
+		gameOver.ShowLose();
 	}
 }
