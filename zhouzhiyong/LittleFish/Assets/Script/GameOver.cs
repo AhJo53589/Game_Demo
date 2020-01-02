@@ -63,7 +63,7 @@ public class GameOver : MonoBehaviour
 
 		if (starCount < stars.Length)
 		{
-			for (int i = 0; i < starCount; i++)
+			for (int i = 0; i <= starCount; i++)
 			{
 				stars[i].enabled = true;
 
